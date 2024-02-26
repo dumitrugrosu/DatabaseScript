@@ -9,7 +9,7 @@ namespace YourNamespace.Controllers
     {
         private readonly string connectionString = "Server=localhost;Database=aux_db;Uid=root;Pwd=Panatha4ever;";
 
-        [HttpGet]
+        [HttpGet("UpdateDatabase")]
         public IActionResult ProcessPilots()
         {
             string excelFilePath = "aux_pilots.xlsx"; // Update with the actual file path
