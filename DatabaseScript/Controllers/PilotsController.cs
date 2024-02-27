@@ -27,8 +27,13 @@ namespace DatabaseScript.Controllers
                     string primary = row.Cell(2).Value.ToString(); // Assuming primary is in the first column
                     string fakesString = row.Cell(3).Value.ToString(); // Assuming fakes are in the second column
                     List<string> fakes = new List<string>(fakesString.Split(','));
-
-                    data.Add(primary, fakes);
+                    if (!data.ContainsKey(primary))
+                    {
+                        data.Add(primary, fakes);
+                    }
+                    else
+                    {
+                    }
                 }
             }
 
