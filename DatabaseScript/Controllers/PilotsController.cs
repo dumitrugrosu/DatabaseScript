@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySqlConnector;
 using ClosedXML.Excel;
+using Microsoft.Extensions.Configuration;
 
 namespace DatabaseScript.Controllers
 {
@@ -8,12 +9,13 @@ namespace DatabaseScript.Controllers
     [Route("[controller]")]
     public class PilotsController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly string connectionString = "Server=localhost;Database=aux_db;Uid=root;Pwd=Panatha4ever;";
 
         [HttpGet("UpdatePilots")]
         public IActionResult ProcessPilots()
         {
-            string excelFilePath = "C:\\Users\\dumitru.grosu\\Documents\\DataReading\\DatabaseScript\\DatabaseScript\\aux_pilots.xlsx"; // Update with the actual file path
+            string excelFilePath = _configuration["FilePaths:ExcelFilePath"]; // Update with the actual file path
             Dictionary<string, List<string>> data = new Dictionary<string, List<string>>();
 
             // Read Excel file and populate data dictionary
