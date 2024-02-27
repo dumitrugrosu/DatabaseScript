@@ -1,7 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using MySqlConnector;
+using ClosedXML.Excel;
 
-namespace YourNamespace.Controllers
+namespace DatabaseScript.Controllers
 {
     [ApiController]
     [Route("[controller]")]
@@ -9,14 +10,27 @@ namespace YourNamespace.Controllers
     {
         private readonly string connectionString = "Server=localhost;Database=aux_db;Uid=root;Pwd=Panatha4ever;";
 
-        [HttpGet("UpdateDatabase")]
+        [HttpGet("UpdatePilots")]
         public IActionResult ProcessPilots()
         {
-            string excelFilePath = "aux_pilots.xlsx"; // Update with the actual file path
+            string excelFilePath = "C:\\Users\\dumitru.grosu\\Documents\\DataReading\\DatabaseScript\\DatabaseScript\\aux_pilots.xlsx"; // Update with the actual file path
             Dictionary<string, List<string>> data = new Dictionary<string, List<string>>();
 
             // Read Excel file and populate data dictionary
-            // Use appropriate method to read Excel file in C#, such as EPPlus or ClosedXML
+            using (var workbook = new XLWorkbook(excelFilePath))
+            {
+                var worksheet = workbook.Worksheet(1); // Assuming data is on the first sheet
+
+                var rows = worksheet.RowsUsed();
+                foreach (var row in rows)
+                {
+                    string primary = row.Cell(2).Value.ToString(); // Assuming primary is in the first column
+                    string fakesString = row.Cell(3).Value.ToString(); // Assuming fakes are in the second column
+                    List<string> fakes = new List<string>(fakesString.Split(','));
+
+                    data.Add(primary, fakes);
+                }
+            }
 
             // Connect to the database
             using (MySqlConnection connection = new MySqlConnection(connectionString))

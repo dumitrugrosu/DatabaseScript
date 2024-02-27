@@ -15,10 +15,18 @@ namespace DatabaseScript.Controllers
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<ActionResult> GetTugs()
+        [HttpGet("/UpdatePilots")]
+        public async Task<IActionResult> GetTugsById(int id)
         {
-            return await _context.Tugs.ToListAsync();
+            try
+            {
+                var tugs = await _context.Tugs.FirstAsync(x => x.Primary == id);
+                return Ok(tugs);
+
+            }catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // Implement other CRUD actions as needed

@@ -15,11 +15,19 @@ namespace DatabaseScript.Controllers
             _context = context;
         }
 
-        [HttpGet]
-        public async Task<ActionResult> GetBarges()
+        [HttpGet("/UpdateBarges")]
+        
+        public async Task<IActionResult> GetBargesById(int id)
         {
-            // Ensure that _context.Barges is of type IQueryable<Barge>
-            return await _context.Barges.ToListAsync();
+            try
+            {
+                var barges = await _context.Barges.FirstAsync(x => x.Primary == id);
+                return Ok(barges);
+
+            }catch(Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
 
         // Implement other CRUD actions as needed
