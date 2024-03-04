@@ -27,6 +27,8 @@ namespace DatabaseScript.Context
     public class Tug
     {
         public int Primary { get; set; }
+        public string? Name { get; set; }
+        public int Id { get; set; }
     }
 
     public class Pilot
