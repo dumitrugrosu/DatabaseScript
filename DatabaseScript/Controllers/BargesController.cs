@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DatabaseScript.Context;
 using OfficeOpenXml;
+using System.Diagnostics;
 
 namespace DatabaseScript.Controllers
 {
@@ -41,6 +42,7 @@ namespace DatabaseScript.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing uploaded file");
+                Debug.WriteLine(ex.Message);
                 return StatusCode(500, "An error occurred while processing the file");
             }
         }
