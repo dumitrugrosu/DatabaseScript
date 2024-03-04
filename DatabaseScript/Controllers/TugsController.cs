@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using MySqlConnector;
-using ClosedXML.Excel;
-using System.Linq;
+using OfficeOpenXml;
+using DatabaseScript.Context;
 
 namespace DatabaseScript.Controllers
 {
@@ -9,130 +8,110 @@ namespace DatabaseScript.Controllers
     [Route("[controller]")]
     public class TugsController : ControllerBase
     {
-        private readonly string _connectionString = "Server=localhost;Database=aux_db;Uid=root;Pwd=Panatha4ever;";
+        private readonly ILogger<TugsController> _logger;
+        private readonly ScriptDbContext _dbContext;
+        private readonly string _tugsFilePath;
 
-        [HttpGet("UpdateTugs")]
-        public IActionResult ProcessTugs()
+        public TugsController(ILogger<TugsController> logger, ScriptDbContext dbContext, Microsoft.Extensions.Configuration.IConfiguration config)
         {
-            string excelFilePath = "aux_tugs.xlsx";
-            Dictionary<string, List<string>> data = new Dictionary<string, List<string>>();
+            _logger = logger;
+            _dbContext = dbContext;
+            _tugsFilePath = config["FilePaths:TugsFile"];
+        }
 
+        [HttpPost("UploadTugs")]
+        public IActionResult ProcessUploadedFile(IFormFile file)
+        {
             try
             {
-                using (var workbook = new XLWorkbook(excelFilePath))
+                if (file == null || file.Length == 0)
+                    return BadRequest("File is empty");
+
+                // Save the uploaded file to the server
+                string filePath = Path.Combine(_tugsFilePath, file.FileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
-                    var worksheet = workbook.Worksheet(1);
-                    foreach (var row in worksheet.RowsUsed())
-                    {
-                        string primary = row.Cell(2).Value.ToString().Trim();
-                        string fakesString = row.Cell(3).Value.ToString().Trim();
-                        List<string> fakes = new List<string>(fakesString.Split(',').Select(s => s.Trim()));
-                        if (!data.ContainsKey(primary))
-                        {
-                            data.Add(primary, fakes);
-                        }
-                    }
+                    file.CopyTo(fileStream);
                 }
 
-                using (var connection = new MySqlConnection(_connectionString))
-                {
-                    connection.Open();
-                    using (var transaction = connection.BeginTransaction())
-                    {
-                        try
-                        {
-                            foreach (var kvp in data)
-                            {
-                                ProcessPrimaryTug(connection, transaction, kvp.Key, kvp.Value);
-                            }
+                // Process the uploaded Excel file
+                ProcessExcelFile(filePath);
 
-                            transaction.Commit();
-                            return Ok("Processing completed successfully.");
-                        }
-                        catch (Exception ex)
-                        {
-                            transaction.Rollback();
-                            return StatusCode(500, $"An error occurred: {ex.Message}");
-                        }
-                    }
-                }
+                return Ok("File uploaded and processed successfully");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"An error occurred while reading the Excel file: {ex.Message}");
+                _logger.LogError(ex, "Error processing uploaded file");
+                return StatusCode(500, "An error occurred while processing the file");
             }
         }
 
-        private void ProcessPrimaryTug(MySqlConnection connection, MySqlTransaction transaction, string primaryName, List<string> fakes)
+        private void ProcessExcelFile(string filePath)
         {
-            using (var command = new MySqlCommand())
+            using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
-                command.Connection = connection;
-                command.Transaction = transaction;
-                command.CommandText = "SELECT id_tug, name_tug FROM aux_tugs WHERE name_tug = @primaryName ORDER BY id_tug";
-                command.Parameters.AddWithValue("@primaryName", primaryName);
+                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                if (worksheet == null)
+                    throw new Exception("Worksheet not found in Excel file");
 
-                using (var reader = command.ExecuteReader())
+                // Read Excel rows and process data
+                for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
                 {
-                    if (reader.Read())
-                    {
-                        int primaryId = reader.GetInt32(0);
-                        string primaryNameDb = reader.GetString(1);
+                    string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
+                    string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
+                    List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
 
-                        Console.WriteLine($"Primary {primaryNameDb} found with id_tug: {primaryId}");
-
-                        reader.Close();
-
-                        foreach (var fakeName in fakes)
-                        {
-                            UpdateAndDeleteFakeTugs(connection, transaction, primaryId, fakeName);
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine($"No match found for primary {primaryName}");
-                    }
+                    ProcessPrimaryTug(primaryName, fakes);
                 }
+
+                _dbContext.SaveChanges();
             }
         }
 
-        private void UpdateAndDeleteFakeTugs(MySqlConnection connection, MySqlTransaction transaction, int primaryId, string fakeName)
+        private void ProcessPrimaryTug(string primaryName, List<string> fakes)
         {
-            using (var command = new MySqlCommand())
+            var primaryTug = _dbContext.Tugs.FirstOrDefault(t => t.Name == primaryName);
+
+            if (primaryTug != null)
             {
-                command.Connection = connection;
-                command.Transaction = transaction;
+                int primaryId = primaryTug.Id;
+                string primaryNameDb = primaryTug.Name;
 
-                command.CommandText = "SELECT id_tug FROM aux_tugs WHERE name_tug = @fakeName";
-                command.Parameters.AddWithValue("@fakeName", fakeName);
-                var result = command.ExecuteScalar();
+                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryId}");
 
-                if (result != null)
+                foreach (var fakeName in fakes)
                 {
-                    int fakeId = Convert.ToInt32(result);
-
-                    command.CommandText = "UPDATE aux_movement_tugs SET id_tug = @primaryId WHERE id_tug = @fakeId";
-                    command.Parameters.Clear();
-                    command.Parameters.AddWithValue("@primaryId", primaryId);
-                    command.Parameters.AddWithValue("@fakeId", fakeId);
-                    command.ExecuteNonQuery();
-
-                    Console.WriteLine($"Updated aux_movement_tugs for fake {fakeName}");
-
-                    if (primaryId != fakeId)
-                    {
-                        command.CommandText = "DELETE FROM aux_tugs WHERE id_tug = @fakeId";
-                        command.Parameters.Clear();
-                        command.Parameters.AddWithValue("@fakeId", fakeId);
-                        command.ExecuteNonQuery();
-
-                        Console.WriteLine($"Deleted fake {fakeName} from aux_tugs");
-                    }
+                    UpdateAndDeleteFakeTugs(primaryId, fakeName);
                 }
-                else
+            }
+            else
+            {
+                _logger.LogWarning($"No match found for primary {primaryName}");
+            }
+        }
+
+        private void UpdateAndDeleteFakeTugs(int primaryId, string fakeName)
+        {
+            var fakeTug = _dbContext.Tugs.FirstOrDefault(t => t.Name == fakeName);
+
+            if (fakeTug != null)
+            {
+                int fakeId = fakeTug.Id;
+
+                var movementTugsToUpdate = _dbContext.Tugs.Where(mt => mt.Id == fakeId);
+                foreach (var mt in movementTugsToUpdate)
                 {
-                    Console.WriteLine($"No match found for fake {fakeName}");
+                    mt.Id = primaryId;
                 }
+
+                _dbContext.Tugs.Remove(fakeTug);
+
+                _logger.LogInformation($"Updated aux_movement_tugs for fake {fakeName}");
+                _logger.LogInformation($"Deleted fake {fakeName} from aux_tugs");
+            }
+            else
+            {
+                _logger.LogWarning($"No match found for fake {fakeName}");
             }
         }
     }
