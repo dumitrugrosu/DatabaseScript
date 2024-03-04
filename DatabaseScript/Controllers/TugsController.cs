@@ -12,7 +12,7 @@ namespace DatabaseScript.Controllers
         private readonly ScriptDbContext _dbContext;
         private readonly string _tugsFilePath;
 
-        public TugsController(ILogger<TugsController> logger, ScriptDbContext dbContext, Microsoft.Extensions.Configuration.IConfiguration config)
+        public TugsController(ILogger<TugsController> logger, ScriptDbContext dbContext, IConfiguration config)
         {
             _logger = logger;
             _dbContext = dbContext;

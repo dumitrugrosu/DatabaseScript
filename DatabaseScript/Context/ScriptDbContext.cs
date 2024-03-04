@@ -22,6 +22,8 @@ namespace DatabaseScript.Context
     public class Barge
     {
         public int Primary { get; set; }
+        public string? Name { get; set; }
+        public int Id { get; set; }
     }
 
     public class Tug
@@ -34,5 +36,7 @@ namespace DatabaseScript.Context
     public class Pilot
     {
         public int Primary { get; set; }
+        public string? Name { get; set; }
+        public int Id { get; set; }
     }
 }
