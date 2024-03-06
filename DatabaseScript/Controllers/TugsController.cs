@@ -48,6 +48,7 @@ namespace DatabaseScript.Controllers
 
         private void ProcessExcelFile(string filePath)
         {
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
             using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
                 var worksheet = package.Workbook.Worksheets.FirstOrDefault();
