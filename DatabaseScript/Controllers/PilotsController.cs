@@ -103,13 +103,10 @@ namespace DatabaseScript.Controllers
             var fakePilot = dbContext.Pilots.FirstOrDefault(p => p.Name == fakeName);
             if (fakePilot != null)
             {
-                int fakeId = fakePilot.Id;
-                var movementPilotsToUpdate = dbContext.Pilots.Where(mt => mt.Id == fakeId);
+                var movementPilotsToUpdate = dbContext.Movement.Where(mt => mt.IdPilot == fakePilot.Id);
                 foreach (var mt in movementPilotsToUpdate)
                 {
-                    dbContext.Pilots.Remove(mt); // Delete the existing entity
-                    mt.Id = primaryId; // Set the new primary key value
-                    dbContext.Pilots.Add(mt); // Associate the entity with the new primary key
+                    mt.IdPilot = primaryId; // Set the new primary key value
                 }
                 dbContext.Pilots.Remove(fakePilot);
                 _logger.LogInformation($"Updated aux_movement_pilots for fake {fakeName}");

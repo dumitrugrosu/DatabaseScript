@@ -120,8 +120,8 @@ namespace DatabaseScript.Controllers
                 // Remove fakeTug
                 dbContext.Tugs.Remove(fakeTug);
 
-                _logger.LogInformation($"Updated aux_movement_tugs for fake {fakeName}");
-                _logger.LogInformation($"Deleted fake {fakeName} from aux_tugs");
+                _logger.LogInformation($"Updated aux_movement_tugs for fake {fakeName} and {fakeTug.Id}");
+                _logger.LogInformation($"Deleted fake {fakeName} and {fakeTug.Id} from aux_tugs");
 
                 // Save changes to the database
                 dbContext.SaveChanges();

@@ -12,6 +12,7 @@ namespace DatabaseScript.Context
         public DbSet<Tug> Tugs { get; set; }
         public DbSet<Barge> Barges { get; set; }
         public DbSet<MovementTugs> MovementTugs { get; set; }
+        public DbSet<Movement> Movement { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
