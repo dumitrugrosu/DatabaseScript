@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
 using DatabaseScript.Context;
+using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseScript.Controllers
 {
@@ -8,15 +9,25 @@ namespace DatabaseScript.Controllers
     [Route("[controller]")]
     public class TugsController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly ILogger<TugsController> _logger;
-        private readonly ScriptDbContext _dbContext;
         private readonly string _tugsFilePath;
+        private readonly string _connectionString;
 
-        public TugsController(ILogger<TugsController> logger, ScriptDbContext dbContext, IConfiguration config)
+        public TugsController(ILogger<TugsController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            _dbContext = dbContext;
-            _tugsFilePath = config["FilePaths:TugsFile"];
+            _tugsFilePath = configuration["FilePaths:File"];
+            _configuration = configuration;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
+        }
+
+        private ScriptDbContext CreateDbContext()
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<ScriptDbContext>();
+            optionsBuilder.UseMySql(_connectionString, ServerVersion.AutoDetect(_connectionString));
+
+            return new ScriptDbContext(optionsBuilder.Options);
         }
 
         [HttpPost("UploadTugs")]
@@ -48,30 +59,33 @@ namespace DatabaseScript.Controllers
 
         private void ProcessExcelFile(string filePath)
         {
-            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
-            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            using (var dbContext = CreateDbContext())
             {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
-                    throw new Exception("Worksheet not found in Excel file");
-
-                // Read Excel rows and process data
-                for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
-                    string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
-                    string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
-                    List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    if (worksheet == null)
+                        throw new Exception("Worksheet not found in Excel file");
 
-                    ProcessPrimaryTug(primaryName, fakes);
+                    // Read Excel rows and process data
+                    for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
+                        string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
+                        List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
+
+                        ProcessPrimaryTug(dbContext, primaryName, fakes);
+                    }
+
+                    dbContext.SaveChanges();
                 }
-
-                _dbContext.SaveChanges();
             }
         }
 
-        private void ProcessPrimaryTug(string primaryName, List<string> fakes)
+        private void ProcessPrimaryTug(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryTug = _dbContext.Tugs.FirstOrDefault(t => t.Name == primaryName);
+            var primaryTug = dbContext.Tugs.FirstOrDefault(t => t.Name == primaryName);
 
             if (primaryTug != null)
             {
@@ -82,7 +96,7 @@ namespace DatabaseScript.Controllers
 
                 foreach (var fakeName in fakes)
                 {
-                    UpdateAndDeleteFakeTugs(primaryId, fakeName);
+                    UpdateAndDeleteFakeTugs(dbContext, primaryId, fakeName); // Pass dbContext to the method
                 }
             }
             else
@@ -91,29 +105,34 @@ namespace DatabaseScript.Controllers
             }
         }
 
-        private void UpdateAndDeleteFakeTugs(int primaryId, string fakeName)
+        private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakeTug = _dbContext.Tugs.FirstOrDefault(t => t.Name == fakeName);
+            var fakeTug = dbContext.Tugs.FirstOrDefault(t => t.Name == fakeName);
 
             if (fakeTug != null)
             {
-                int fakeId = fakeTug.Id;
-
-                var movementTugsToUpdate = _dbContext.Tugs.Where(mt => mt.Id == fakeId);
+                // Update related entries in aux_movement_tugs
+                var movementTugsToUpdate = dbContext.MovementTugs.Where(mt => mt.IdTug == fakeTug.Id);
                 foreach (var mt in movementTugsToUpdate)
                 {
-                    mt.Id = primaryId;
+                    mt.IdTug = primaryId;
                 }
-
-                _dbContext.Tugs.Remove(fakeTug);
+                // Remove fakeTug
+                dbContext.Tugs.Remove(fakeTug);
 
                 _logger.LogInformation($"Updated aux_movement_tugs for fake {fakeName}");
                 _logger.LogInformation($"Deleted fake {fakeName} from aux_tugs");
+
+                // Save changes to the database
+                dbContext.SaveChanges();
             }
             else
             {
                 _logger.LogWarning($"No match found for fake {fakeName}");
             }
         }
+
+
+
     }
 }

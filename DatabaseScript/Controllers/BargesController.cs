@@ -2,6 +2,7 @@
 using DatabaseScript.Context;
 using OfficeOpenXml;
 using System.Diagnostics;
+using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseScript.Controllers
 {
@@ -9,15 +10,24 @@ namespace DatabaseScript.Controllers
     [Route("[controller]")]
     public class BargesController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly ILogger<BargesController> _logger;
-        private readonly ScriptDbContext _dbContext;
         private readonly string _bargesFilePath;
+        private readonly string _connectionString;
 
-        public BargesController(ILogger<BargesController> logger, ScriptDbContext dbContext, IConfiguration config)
+        public BargesController(ILogger<BargesController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            _dbContext = dbContext;
-            _bargesFilePath = config["FilePath:BargesFile"];
+            _bargesFilePath = configuration["FilePaths:File"];
+            _configuration = configuration;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
+        }
+        private ScriptDbContext CreateDbContext()
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<ScriptDbContext>();
+            optionsBuilder.UseMySql(_connectionString, ServerVersion.AutoDetect(_connectionString));
+
+            return new ScriptDbContext(optionsBuilder.Options);
         }
         [HttpPost("UploadBarges")]
         public IActionResult ProcessUploadedFile(IFormFile file)
@@ -48,26 +58,31 @@ namespace DatabaseScript.Controllers
         }
         private void ProcessExcelFile(string filePath)
         {
-            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            using (var dbContext = CreateDbContext())
             {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
-                    throw new Exception("Worksheet not found in Excel file");
-
-                // Read Excel rows and process data
-                for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
-                    string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
-                    string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
-                    List<string> fakes = fakesString.Split(',').Select(f => f.Trim()).ToList();
-                    ProcessPrimaryBarge(primaryName, fakes);
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    if (worksheet == null)
+                        throw new Exception("Worksheet not found in Excel file");
 
+                    // Read Excel rows and process data
+                    for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
+                        string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
+                        List<string> fakes = fakesString.Split(',').Select(f => f.Trim()).ToList();
+                        ProcessPrimaryBarge(dbContext, primaryName, fakes);
+
+                    }
+                    dbContext.SaveChanges();
                 }
             }
         }
-        private void ProcessPrimaryBarge(string primaryName, List<string>fakes)
+        private void ProcessPrimaryBarge(ScriptDbContext dbContext,  string primaryName, List<string>fakes)
         {
-            var primaryBarge = _dbContext.Barges.FirstOrDefault(p => p.Name == primaryName);
+            var primaryBarge = dbContext.Barges.FirstOrDefault(p => p.Name == primaryName);
             if (primaryBarge == null)
             {
                 int primaryId = primaryBarge.Id;
@@ -75,7 +90,7 @@ namespace DatabaseScript.Controllers
                 _logger.LogInformation($"Primary {primaryNameDb} found with id_barge: {primaryId}");
                 foreach (var fakeName in fakes)
                 {
-                    UpdateAndDeleteFakeBarges(primaryId, fakeName);
+                    UpdateAndDeleteFakeBarges(dbContext, primaryId, fakeName);
                 }
             }
             else
@@ -83,19 +98,20 @@ namespace DatabaseScript.Controllers
                 _logger.LogInformation($"Primary {primaryName} not found");
             }
         }
-        private void UpdateAndDeleteFakeBarges(int primaryId, string fakeName)
+        private void UpdateAndDeleteFakeBarges(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakeBarge = _dbContext.Barges.FirstOrDefault(p => p.Name == fakeName);
+            var fakeBarge = dbContext.Barges.FirstOrDefault(p => p.Name == fakeName);
+
             if (fakeBarge != null)
             {
                 int fakeId = fakeBarge.Id;
-                var movementBargesToUpdate = _dbContext.Barges.Where(mt => mt.Id == fakeId);
+                var movementBargesToUpdate = dbContext.Barges.Where(mt => mt.Id == fakeId);
                 foreach (var mt in movementBargesToUpdate)
                 {
                     mt.Id = primaryId;
                 }
-                _dbContext.Barges.Update(fakeBarge);
-                _dbContext.SaveChanges();
+                dbContext.Barges.Update(fakeBarge);
+                dbContext.SaveChanges();
                 _logger.LogInformation($"Fake {fakeName} updated with primary_id: {primaryId}");
                 _logger.LogInformation($"Fake {fakeName} deleted");
             }

@@ -4,7 +4,7 @@ namespace DatabaseScript.Models
 {
     public class Barges
     {
-        public string Primary { get; set; }
-        public List<string> Fakes { get; set; }
+        public string? Primary { get; set; }
+        public List<string>? Fakes { get; set; }
     }
 }

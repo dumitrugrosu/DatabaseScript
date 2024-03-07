@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DatabaseScript.Context;
 using OfficeOpenXml;
+using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseScript.Controllers
 {
@@ -9,15 +10,25 @@ namespace DatabaseScript.Controllers
     public class PilotsController : ControllerBase
    
     {
+        private readonly IConfiguration _configuration;
         private readonly ILogger<PilotsController> _logger;
-        private readonly ScriptDbContext _dbContext;
         private readonly string _pilotsFilePath;
+        private readonly string _connectionString;
 
-        public PilotsController(ILogger<PilotsController> logger, ScriptDbContext dbContext, IConfiguration config)
+        public PilotsController(ILogger<PilotsController> logger, IConfiguration configuration)
         {
             _logger = logger;
-            _dbContext = dbContext;
-            _pilotsFilePath = config["FilePath:PilotsFile"];
+            _pilotsFilePath = configuration["FilePaths:File"];
+            _configuration = configuration;
+            _connectionString = configuration.GetConnectionString("DefaultConnection");
+
+        }
+        private ScriptDbContext CreateDbContext()
+        {
+            var optionsBuilder = new DbContextOptionsBuilder<ScriptDbContext>();
+            optionsBuilder.UseMySql(_connectionString, ServerVersion.AutoDetect(_connectionString));
+
+            return new ScriptDbContext(optionsBuilder.Options);
         }
         [HttpPost("UploadPilots")]
         public IActionResult ProcessUploadedFile(IFormFile file)
@@ -48,25 +59,30 @@ namespace DatabaseScript.Controllers
 
         private void ProcessExcelFile(string filePath)
         {
-            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            using (var dbContext = CreateDbContext())
             {
-                var worksheet = package.Workbook.Worksheets.FirstOrDefault();
-                if (worksheet == null)
-                    throw new Exception("Worksheet not found in Excel file");
-
-                // Read Excel rows and process data
-                for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
+                using (var package = new ExcelPackage(new FileInfo(filePath)))
                 {
-                    string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
-                    string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
-                    List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
-                    ProcessPrimaryPilot(primaryName, fakes);
+                    var worksheet = package.Workbook.Worksheets.FirstOrDefault();
+                    if (worksheet == null)
+                        throw new Exception("Worksheet not found in Excel file");
+
+                    // Read Excel rows and process data
+                    for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
+                    {
+                        string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
+                        string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
+                        List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
+                        ProcessPrimaryPilot(dbContext, primaryName, fakes);
+                    }
+                    dbContext.SaveChanges();
                 }
             }
         }
-        private void ProcessPrimaryPilot(string primaryName, List<string> fakes)
+        private void ProcessPrimaryPilot(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryPilot = _dbContext.Pilots.FirstOrDefault(p => p.Name == primaryName);
+            var primaryPilot = dbContext.Pilots.FirstOrDefault(p => p.Name == primaryName);
             if (primaryPilot != null)
             {
                 int primaryId = primaryPilot.Id;
@@ -74,7 +90,7 @@ namespace DatabaseScript.Controllers
                 _logger.LogInformation($"Primary {primaryNameDb} found with id_pilot: {primaryId}");
                 foreach (var fakeName in fakes)
                 {
-                    UpdateAndDeleteFakePilots(primaryId, fakeName);
+                    UpdateAndDeleteFakePilots(dbContext, primaryId, fakeName);
                 }
             }
             else
@@ -82,21 +98,24 @@ namespace DatabaseScript.Controllers
                 _logger.LogWarning($"No match found for primary {primaryName}");
             }   
         }
-        private void UpdateAndDeleteFakePilots(int primaryId, string fakeName)
+        private void UpdateAndDeleteFakePilots(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakePilot = _dbContext.Pilots.FirstOrDefault(p => p.Name == fakeName);
+            var fakePilot = dbContext.Pilots.FirstOrDefault(p => p.Name == fakeName);
             if (fakePilot != null)
             {
                 int fakeId = fakePilot.Id;
-                var movementPilotsToUpdate = _dbContext.Pilots.Where(mt => mt.Id == fakeId);
+                var movementPilotsToUpdate = dbContext.Pilots.Where(mt => mt.Id == fakeId);
                 foreach (var mt in movementPilotsToUpdate)
                 {
-                    mt.Id = primaryId;
+                    dbContext.Pilots.Remove(mt); // Delete the existing entity
+                    mt.Id = primaryId; // Set the new primary key value
+                    dbContext.Pilots.Add(mt); // Associate the entity with the new primary key
                 }
-                _dbContext.Pilots.Remove(fakePilot);
-                _dbContext.SaveChanges();
+                dbContext.Pilots.Remove(fakePilot);
                 _logger.LogInformation($"Updated aux_movement_pilots for fake {fakeName}");
-                _logger.LogInformation($"Deleted fake {fakeName} from aux_pilots");
+                _logger.LogInformation($"Deleted fake {fakeName} from aux_pilot");
+                dbContext.SaveChanges();
+
             }
             else
             {

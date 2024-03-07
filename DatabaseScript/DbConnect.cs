@@ -45,11 +45,11 @@ namespace DatabaseScript
                 switch (ex.Number)
                 {
                     case 0:
-                        MessageBox.Show("Cannot connect to server.  Contact administrator");
+                        Console.WriteLine("Cannot connect to server.  Contact administrator");
                         break;
 
                     case 1045:
-                        MessageBox.Show("Invalid username/password, please try again");
+                        Console.WriteLine("Invalid username/password, please try again");
                         break;
                 }
                 return false;
@@ -66,44 +66,10 @@ namespace DatabaseScript
             }
             catch (MySqlException ex)
             {
-                MessageBox.Show(ex.Message);
+                Console.WriteLine(ex.Message);
                 return false;
             }
         }
 
-        //Insert statement
-        public void Insert()
-        {
-        }
-
-        //Update statement
-        public void Update()
-        {
-        }
-
-        //Delete statement
-        public void Delete()
-        {
-        }
-
-        //Select statement
-        public List<string>[] Select()
-        {
-        }
-
-        //Count statement
-        public int Count()
-        {
-        }
-
-        //Backup
-        public void Backup()
-        {
-        }
-
-        //Restore
-        public void Restore()
-        {
-        }
     }
 }
