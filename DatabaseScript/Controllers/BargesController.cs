@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using DatabaseScript.Context;
 using OfficeOpenXml;
 using Microsoft.EntityFrameworkCore;
+using DatabaseScript.Models;
 
 namespace DatabaseScript.Controllers
 {
@@ -80,11 +80,11 @@ namespace DatabaseScript.Controllers
         }
         private void ProcessPrimaryBarge(ScriptDbContext dbContext,  string primaryName, List<string>fakes)
         {
-            var primaryBarge = dbContext.Barges.FirstOrDefault(p => p.Name == primaryName);
+            var primaryBarge = dbContext.AuxBarges.FirstOrDefault(p => p.Barge == primaryName);
             if (primaryBarge != null)
             {
-                int primaryId = primaryBarge.Id;
-                string primaryNameDb = primaryBarge.Name;
+                int primaryId = primaryBarge.IdBarge;
+                string primaryNameDb = primaryBarge.Barge;
                 _logger.LogInformation($"Primary {primaryNameDb} found with id_barge: {primaryId}");
                 foreach (var fakeName in fakes)
                 {
@@ -98,16 +98,16 @@ namespace DatabaseScript.Controllers
         }
         private void UpdateAndDeleteFakeBarges(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakeBarge = dbContext.Barges.FirstOrDefault(p => p.Name == fakeName);
+            var fakeBarge = dbContext.AuxBarges.FirstOrDefault(p => p.Barge == fakeName);
 
             if (fakeBarge != null)
             {
-                var movementBargesToUpdate = dbContext.Barges.Where(m => m.Id == fakeBarge.Id);
+                var movementBargesToUpdate = dbContext.AuxMovements.Where(m => m.BargeField == fakeBarge.IdBarge);
                 foreach (var m in movementBargesToUpdate)
                 {
-                    m.Id = primaryId;
+                    m.BargeField = (uint?)primaryId;
                 }
-                dbContext.Barges.Remove(fakeBarge);
+                dbContext.AuxBarges.Remove(fakeBarge);
                 _logger.LogInformation($"Fake {fakeName} updated with primary_id: {primaryId}");
                 _logger.LogInformation($"Fake {fakeName} deleted");
                 dbContext.SaveChanges();

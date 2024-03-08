@@ -5,13 +5,13 @@ using Pomelo.EntityFrameworkCore.MySql.Scaffolding.Internal;
 
 namespace DatabaseScript.Models;
 
-public partial class AuxDbContext : DbContext
+public partial class ScriptDbContext : DbContext
 {
-    public AuxDbContext()
+    public ScriptDbContext()
     {
     }
 
-    public AuxDbContext(DbContextOptions<AuxDbContext> options)
+    public ScriptDbContext(DbContextOptions<ScriptDbContext> options)
         : base(options)
     {
     }
@@ -32,7 +32,7 @@ public partial class AuxDbContext : DbContext
 
     public virtual DbSet<AuxSetting> AuxSettings { get; set; }
 
-    public virtual DbSet<AuxTug> AuxTugs { get; set; }
+    public virtual DbSet<AuxTugs> AuxTugs { get; set; }
 
     public virtual DbSet<AuxType> AuxTypes { get; set; }
 
@@ -40,10 +40,7 @@ public partial class AuxDbContext : DbContext
 
     public virtual DbSet<AuxWarn> AuxWarns { get; set; }
 
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
-        => optionsBuilder.UseMySql("server=localhost;database=aux_db;uid=root;pwd=Panatha4ever", Microsoft.EntityFrameworkCore.ServerVersion.Parse("10.11.6-mariadb"));
-
+   
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -275,7 +272,7 @@ public partial class AuxDbContext : DbContext
                 .HasColumnName("setting_value");
         });
 
-        modelBuilder.Entity<AuxTug>(entity =>
+        modelBuilder.Entity<AuxTugs>(entity =>
         {
             entity.HasKey(e => e.IdTug).HasName("PRIMARY");
 

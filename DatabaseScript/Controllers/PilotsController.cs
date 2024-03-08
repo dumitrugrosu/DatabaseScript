@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using DatabaseScript.Context;
 using OfficeOpenXml;
 using Microsoft.EntityFrameworkCore;
+using DatabaseScript.Models;
 
 namespace DatabaseScript.Controllers
 {
@@ -81,11 +81,11 @@ namespace DatabaseScript.Controllers
         }
         private void ProcessPrimaryPilot(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryPilot = dbContext.Pilots.FirstOrDefault(p => p.Name == primaryName);
+            var primaryPilot = dbContext.AuxPilots.FirstOrDefault(p => p.Pilot == primaryName);
             if (primaryPilot != null)
             {
-                int primaryId = primaryPilot.Id;
-                string primaryNameDb = primaryPilot.Name;
+                int primaryId = primaryPilot.IdPilot;
+                string primaryNameDb = primaryPilot.Pilot;
                 _logger.LogInformation($"Primary {primaryNameDb} found with id_pilot: {primaryId}");
                 foreach (var fakeName in fakes)
                 {
@@ -99,15 +99,15 @@ namespace DatabaseScript.Controllers
         }
         private void UpdateAndDeleteFakePilots(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakePilot = dbContext.Pilots.FirstOrDefault(p => p.Name == fakeName);
+            var fakePilot = dbContext.AuxPilots.FirstOrDefault(p => p.Pilot == fakeName);
             if (fakePilot != null)
             {
-                var movementPilotsToUpdate = dbContext.Movement.Where(m => m.IdPilot == fakePilot.Id);
+                var movementPilotsToUpdate = dbContext.AuxMovements.Where(m => m.PilotField == fakePilot.IdPilot);
                 foreach (var m in movementPilotsToUpdate)
                 {
-                    m.IdPilot = primaryId; // Set the new primary key value
+                    m.PilotField = (uint)primaryId; // Set the new primary key value
                 }
-                dbContext.Pilots.Remove(fakePilot);
+                dbContext.AuxPilots.Remove(fakePilot);
                 _logger.LogInformation($"Updated aux_movement_pilots for fake {fakeName}");
                 _logger.LogInformation($"Deleted fake {fakeName} from aux_pilot");
                 dbContext.SaveChanges();

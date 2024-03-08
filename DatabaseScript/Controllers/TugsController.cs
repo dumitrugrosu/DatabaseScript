@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OfficeOpenXml;
-using DatabaseScript.Context;
 using Microsoft.EntityFrameworkCore;
+using DatabaseScript.Models;
 
 namespace DatabaseScript.Controllers
 {
@@ -85,14 +85,14 @@ namespace DatabaseScript.Controllers
 
         private void ProcessPrimaryTug(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryTug = dbContext.Tugs.FirstOrDefault(t => t.Name == primaryName);
+            var primaryTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == primaryName);
 
             if (primaryTug != null)
             {
-                int primaryId = primaryTug.Id;
-                string primaryNameDb = primaryTug.Name;
+                int primaryId = primaryTug.IdTug;
+                string primaryNameDb = primaryTug.NameTug;
 
-                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryTug.Id}");
+                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryTug.IdTug}");
 
                 foreach (var fakeName in fakes)
                 {
@@ -107,7 +107,7 @@ namespace DatabaseScript.Controllers
 
         private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, string fakeName)
         {
-            var fakeTug = dbContext.Tugs.FirstOrDefault(t => t.Name == fakeName);
+            var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == fakeName);
 
             if (fakeTug != null)
             {
@@ -115,21 +115,20 @@ namespace DatabaseScript.Controllers
                 {
                     try
                     {
-                        var movementTugsToUpdate = dbContext.MovementTugs.Where(mt => mt.IdTug == fakeTug.Id).ToList();
+                        var movementTugsToUpdate = dbContext.AuxMovementTugs.Where(mt => mt.IdTug == fakeTug.IdTug).ToList();
 
                         foreach (var mt in movementTugsToUpdate)
                         {
-                            mt.IdTug = primaryId;
+                            mt.IdTug = (uint)primaryId;
+                            dbContext.SaveChanges();
                         }
 
-                        dbContext.SaveChanges(); // Save changes after updating movementTugsToUpdate
-
                         // Ensure there are no remaining references to fakeTug
-                        dbContext.Tugs.Remove(fakeTug);
+                        dbContext.AuxTugs.Remove(fakeTug);
                         dbContext.SaveChanges(); // Save changes after removing fakeTug
 
                         transaction.Commit(); // Commit transaction
-                        _logger.LogInformation($"Updated and deleted fake {fakeName} and {fakeTug.Id}");
+                        _logger.LogInformation($"Updated and deleted fake {fakeName} and {fakeTug.IdTug}");
                     }
                     catch (Exception ex)
                     {

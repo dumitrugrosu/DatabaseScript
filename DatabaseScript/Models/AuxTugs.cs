@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace DatabaseScript.Models;
 
-public partial class AuxTug
+[Table("aux_tugs")]
+public partial class AuxTugs
 {
-    public uint IdTug { get; set; }
-
+    [Column("id_tug")]
+    public int IdTug { get; set; }
+    [Column("name_tug")]
     public string NameTug { get; set; } = null!;
 
     public uint IdType { get; set; }

@@ -1,6 +1,5 @@
-using DatabaseScript.Context;
+using DatabaseScript.Models;
 using Microsoft.EntityFrameworkCore;
-using Pomelo.EntityFrameworkCore.MySql;
 
 var builder = WebApplication.CreateBuilder(args);
 
