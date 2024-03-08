@@ -85,7 +85,7 @@ namespace DatabaseScript.Controllers
 
         private void ProcessPrimaryTug(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == primaryName);
+            var primaryTug = dbContext.AuxTugs.Where(t => t.NameTug == primaryName).OrderBy(t => t.IdTug).FirstOrDefault();
 
             if (primaryTug != null)
             {
@@ -104,6 +104,7 @@ namespace DatabaseScript.Controllers
                 _logger.LogWarning($"No match found for primary {primaryName}");
             }
         }
+
 
         private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, string fakeName)
         {

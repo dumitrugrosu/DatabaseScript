@@ -81,7 +81,7 @@ namespace DatabaseScript.Controllers
         }
         private void ProcessPrimaryPilot(ScriptDbContext dbContext, string primaryName, List<string> fakes)
         {
-            var primaryPilot = dbContext.AuxPilots.FirstOrDefault(p => p.Pilot == primaryName);
+            var primaryPilot = dbContext.AuxPilots.Where(p => p.Pilot == primaryName).OrderBy(p => p.IdPilot).FirstOrDefault();
             if (primaryPilot != null)
             {
                 int primaryId = primaryPilot.IdPilot;
@@ -106,6 +106,7 @@ namespace DatabaseScript.Controllers
                 foreach (var m in movementPilotsToUpdate)
                 {
                     m.PilotField = (uint)primaryId; // Set the new primary key value
+                    dbContext.SaveChanges();
                 }
                 dbContext.AuxPilots.Remove(fakePilot);
                 _logger.LogInformation($"Updated aux_movement_pilots for fake {fakeName}");

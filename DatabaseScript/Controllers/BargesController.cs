@@ -80,7 +80,7 @@ namespace DatabaseScript.Controllers
         }
         private void ProcessPrimaryBarge(ScriptDbContext dbContext,  string primaryName, List<string>fakes)
         {
-            var primaryBarge = dbContext.AuxBarges.FirstOrDefault(p => p.Barge == primaryName);
+            var primaryBarge = dbContext.AuxBarges.Where(p => p.Barge == primaryName).OrderBy(p => p.IdBarge).FirstOrDefault();
             if (primaryBarge != null)
             {
                 int primaryId = primaryBarge.IdBarge;
@@ -106,6 +106,7 @@ namespace DatabaseScript.Controllers
                 foreach (var m in movementBargesToUpdate)
                 {
                     m.BargeField = (uint?)primaryId;
+                    dbContext.SaveChanges();
                 }
                 dbContext.AuxBarges.Remove(fakeBarge);
                 _logger.LogInformation($"Fake {fakeName} updated with primary_id: {primaryId}");
