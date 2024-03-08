@@ -21,6 +21,7 @@ namespace DatabaseScript.Context
             modelBuilder.Entity<Barge>().ToTable("aux_barge");
             modelBuilder.Entity<MovementTugs>().HasNoKey();
             modelBuilder.Entity<Movement>().HasNoKey();
+
         }
     }
 
@@ -60,6 +61,7 @@ namespace DatabaseScript.Context
         [Column("id_tug")]
         public int IdTug { get; set; }
     }
+
     [Table("aux_movement")]
     public class Movement
     {

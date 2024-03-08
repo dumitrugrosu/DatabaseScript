@@ -92,7 +92,7 @@ namespace DatabaseScript.Controllers
                 int primaryId = primaryTug.Id;
                 string primaryNameDb = primaryTug.Name;
 
-                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryId}");
+                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryTug.Id}");
 
                 foreach (var fakeName in fakes)
                 {
@@ -111,26 +111,42 @@ namespace DatabaseScript.Controllers
 
             if (fakeTug != null)
             {
-                // Update related entries in aux_movement_tugs
-                var movementTugsToUpdate = dbContext.MovementTugs.Where(mt => mt.IdTug == fakeTug.Id);
-                foreach (var mt in movementTugsToUpdate)
+                using (var transaction = dbContext.Database.BeginTransaction())
                 {
-                    mt.IdTug = primaryId;
+                    try
+                    {
+                        var movementTugsToUpdate = dbContext.MovementTugs.Where(mt => mt.IdTug == fakeTug.Id).ToList();
+
+                        foreach (var mt in movementTugsToUpdate)
+                        {
+                            mt.IdTug = primaryId;
+                        }
+
+                        dbContext.SaveChanges(); // Save changes after updating movementTugsToUpdate
+
+                        // Ensure there are no remaining references to fakeTug
+                        dbContext.Tugs.Remove(fakeTug);
+                        dbContext.SaveChanges(); // Save changes after removing fakeTug
+
+                        transaction.Commit(); // Commit transaction
+                        _logger.LogInformation($"Updated and deleted fake {fakeName} and {fakeTug.Id}");
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback(); // Rollback transaction on error
+                        _logger.LogError(ex, "Error occurred while updating and deleting fake tugs");
+                        throw; // Rethrow the exception to notify caller
+                    }
                 }
-                // Remove fakeTug
-                dbContext.Tugs.Remove(fakeTug);
-
-                _logger.LogInformation($"Updated aux_movement_tugs for fake {fakeName} and {fakeTug.Id}");
-                _logger.LogInformation($"Deleted fake {fakeName} and {fakeTug.Id} from aux_tugs");
-
-                // Save changes to the database
-                dbContext.SaveChanges();
             }
             else
             {
                 _logger.LogWarning($"No match found for fake {fakeName}");
             }
         }
+
+
+
 
 
 

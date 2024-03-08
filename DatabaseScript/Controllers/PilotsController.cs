@@ -56,7 +56,6 @@ namespace DatabaseScript.Controllers
                 return StatusCode(500, "An error occurred while processing the file");
             }
         }
-
         private void ProcessExcelFile(string filePath)
         {
             using (var dbContext = CreateDbContext())
@@ -103,10 +102,10 @@ namespace DatabaseScript.Controllers
             var fakePilot = dbContext.Pilots.FirstOrDefault(p => p.Name == fakeName);
             if (fakePilot != null)
             {
-                var movementPilotsToUpdate = dbContext.Movement.Where(mt => mt.IdPilot == fakePilot.Id);
-                foreach (var mt in movementPilotsToUpdate)
+                var movementPilotsToUpdate = dbContext.Movement.Where(m => m.IdPilot == fakePilot.Id);
+                foreach (var m in movementPilotsToUpdate)
                 {
-                    mt.IdPilot = primaryId; // Set the new primary key value
+                    m.IdPilot = primaryId; // Set the new primary key value
                 }
                 dbContext.Pilots.Remove(fakePilot);
                 _logger.LogInformation($"Updated aux_movement_pilots for fake {fakeName}");

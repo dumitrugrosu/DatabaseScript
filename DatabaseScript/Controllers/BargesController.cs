@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using DatabaseScript.Context;
 using OfficeOpenXml;
-using System.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
 namespace DatabaseScript.Controllers
@@ -52,7 +51,6 @@ namespace DatabaseScript.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing uploaded file");
-                Debug.WriteLine(ex.Message);
                 return StatusCode(500, "An error occurred while processing the file");
             }
         }
@@ -83,7 +81,7 @@ namespace DatabaseScript.Controllers
         private void ProcessPrimaryBarge(ScriptDbContext dbContext,  string primaryName, List<string>fakes)
         {
             var primaryBarge = dbContext.Barges.FirstOrDefault(p => p.Name == primaryName);
-            if (primaryBarge == null)
+            if (primaryBarge != null)
             {
                 int primaryId = primaryBarge.Id;
                 string primaryNameDb = primaryBarge.Name;
@@ -104,16 +102,16 @@ namespace DatabaseScript.Controllers
 
             if (fakeBarge != null)
             {
-                int fakeId = fakeBarge.Id;
-                var movementBargesToUpdate = dbContext.Barges.Where(mt => mt.Id == fakeId);
-                foreach (var mt in movementBargesToUpdate)
+                var movementBargesToUpdate = dbContext.Barges.Where(m => m.Id == fakeBarge.Id);
+                foreach (var m in movementBargesToUpdate)
                 {
-                    mt.Id = primaryId;
+                    m.Id = primaryId;
                 }
-                dbContext.Barges.Update(fakeBarge);
-                dbContext.SaveChanges();
+                dbContext.Barges.Remove(fakeBarge);
                 _logger.LogInformation($"Fake {fakeName} updated with primary_id: {primaryId}");
                 _logger.LogInformation($"Fake {fakeName} deleted");
+                dbContext.SaveChanges();
+
             }
             else
             {
