@@ -13,7 +13,6 @@ namespace DatabaseScript.Controllers
         private readonly ILogger<BargesController> _logger;
         private readonly string _bargesFilePath;
         private readonly string _connectionString;
-
         public BargesController(ILogger<BargesController> logger, IConfiguration configuration)
         {
             _logger = logger;
@@ -35,17 +34,14 @@ namespace DatabaseScript.Controllers
             {
                 if (file == null || file.Length == 0)
                     return BadRequest("File is empty");
-
                 // Save the uploaded file to the server
                 string filePath = Path.Combine(_bargesFilePath, file.FileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create))
                 {
                     file.CopyTo(fileStream);
                 }
-
                 // Process the uploaded Excel file
                 ProcessExcelFile(filePath);
-
                 return Ok("File uploaded and processed successfully");
             }
             catch (Exception ex)
@@ -64,59 +60,79 @@ namespace DatabaseScript.Controllers
                     var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                     if (worksheet == null)
                         throw new Exception("Worksheet not found in Excel file");
-
                     // Read Excel rows and process data
                     for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
                     {
+                        if (!int.TryParse(worksheet.Cells[row, 1].Value?.ToString().Trim(), out int primaryId))
+                        {
+                            _logger.LogWarning($"Invalid or missing ID at row {row}");
+                            continue; // Skip this row if the ID is invalid
+                        }
                         string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
                         string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
-                        List<string> fakes = fakesString.Split(',').Select(f => f.Trim()).ToList();
-                        ProcessPrimaryBarge(dbContext, primaryName, fakes);
-
+                        List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
+                        ProcessPrimaryBarge(dbContext, primaryId, primaryName, fakes);
                     }
                     dbContext.SaveChanges();
                 }
             }
         }
-        private void ProcessPrimaryBarge(ScriptDbContext dbContext,  string primaryName, List<string>fakes)
+        private void ProcessPrimaryBarge(ScriptDbContext dbContext, int primaryId, string primaryName, List<string> fakes)
         {
-            var primaryBarge = dbContext.AuxBarges.Where(p => p.Barge == primaryName).OrderBy(p => p.IdBarge).FirstOrDefault();
+            var primaryBarge = 
+                dbContext.AuxBarges.FirstOrDefault(b => b.IdBarge == primaryId && b.Barge == primaryName);
             if (primaryBarge != null)
             {
-                int primaryId = primaryBarge.IdBarge;
-                string primaryNameDb = primaryBarge.Barge;
-                _logger.LogInformation($"Primary {primaryNameDb} found with id_barge: {primaryId}");
+                _logger.LogInformation($"Primary {primaryName}  with ID {primaryId} found");
                 foreach (var fakeName in fakes)
                 {
-                    UpdateAndDeleteFakeBarges(dbContext, primaryId, fakeName);
+                    var fakeBarge = dbContext.AuxBarges.FirstOrDefault(b => b.Barge == fakeName && b.IdBarge != primaryId);
+                    if (fakeBarge != null)
+                    {
+                        UpdateAndDeleteFakeBarges(dbContext, primaryId, fakeBarge.IdBarge);
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"No match found for fake {fakeName}");
+                    }
                 }
             }
             else
             {
-                _logger.LogInformation($"Primary {primaryName} not found");
+                _logger.LogWarning($"No match found for primary with ID {primaryId} and name {primaryName}");
             }
         }
-        private void UpdateAndDeleteFakeBarges(ScriptDbContext dbContext, int primaryId, string fakeName)
+        private void UpdateAndDeleteFakeBarges(ScriptDbContext dbContext, int primaryId, int fakeId)
         {
-            var fakeBarge = dbContext.AuxBarges.FirstOrDefault(p => p.Barge == fakeName);
-
+            var fakeBarge = dbContext.AuxBarges.FirstOrDefault(b => b.IdBarge == fakeId);
             if (fakeBarge != null)
             {
-                var movementBargesToUpdate = dbContext.AuxMovements.Where(m => m.BargeField == fakeBarge.IdBarge);
-                foreach (var m in movementBargesToUpdate)
+                using (var transaction = dbContext.Database.BeginTransaction())
                 {
-                    m.BargeField = (uint?)primaryId;
-                    dbContext.SaveChanges();
+                    try
+                    {
+                        var movementBargesToUpdate = dbContext.AuxMovements.Where(m => m.BargeField == fakeId).ToList();
+                        foreach (var m in movementBargesToUpdate)
+                        {
+                            m.BargeField = (uint)primaryId;
+                        }
+                        dbContext.SaveChanges();
+                        dbContext.AuxBarges.Remove(fakeBarge);
+                        dbContext.SaveChanges();
+                        transaction.Commit();
+                        _logger.LogInformation($"Updated and deleted fake {fakeBarge.Barge} with ID {fakeId}");
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        _logger.LogError(ex, $"Error updating and deleting fake {fakeBarge.Barge} with ID {fakeId}");
+                        throw;
+                    }
                 }
-                dbContext.AuxBarges.Remove(fakeBarge);
-                _logger.LogInformation($"Fake {fakeName} updated with primary_id: {primaryId}");
-                _logger.LogInformation($"Fake {fakeName} deleted");
-                dbContext.SaveChanges();
-
             }
             else
             {
-                _logger.LogWarning($"No match found for fake {fakeName}");
+                _logger.LogWarning($"No match found for fake {fakeId}");
             }
         }
     }

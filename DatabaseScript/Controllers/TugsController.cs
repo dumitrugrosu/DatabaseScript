@@ -44,7 +44,6 @@ namespace DatabaseScript.Controllers
                 {
                     file.CopyTo(fileStream);
                 }
-
                 // Process the uploaded Excel file
                 ProcessExcelFile(filePath);
 
@@ -56,7 +55,6 @@ namespace DatabaseScript.Controllers
                 return StatusCode(500, "An error occurred while processing the file");
             }
         }
-
         private void ProcessExcelFile(string filePath)
         {
             using (var dbContext = CreateDbContext())
@@ -67,7 +65,6 @@ namespace DatabaseScript.Controllers
                     var worksheet = package.Workbook.Worksheets.FirstOrDefault();
                     if (worksheet == null)
                         throw new Exception("Worksheet not found in Excel file");
-
                     // Read Excel rows and process data
                     for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
                     {
@@ -77,24 +74,18 @@ namespace DatabaseScript.Controllers
                             _logger.LogWarning($"Invalid or missing ID at row {row}");
                             continue; // Skip this row if the ID is invalid
                         }
-
                         string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
                         string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
                         List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
-
                         ProcessPrimaryTug(dbContext, primaryId, primaryName, fakes);
                     }
-
                     dbContext.SaveChanges();
                 }
             }
-
         }
-
         private void ProcessPrimaryTug(ScriptDbContext dbContext, int primaryId, string primaryName, List<string> fakes)
         {
             var primaryTug = dbContext.AuxTugs.FirstOrDefault(t => t.IdTug == primaryId && t.NameTug == primaryName);
-
             if (primaryTug != null)
             {
                 _logger.LogInformation($"Primary {primaryName} with ID {primaryId} found");
@@ -102,7 +93,6 @@ namespace DatabaseScript.Controllers
                 foreach (var fakeName in fakes)
                 {
                     var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == fakeName && t.IdTug != primaryId);
-
                     if (fakeTug != null)
                     {
                         UpdateAndDeleteFakeTugs(dbContext, primaryId, fakeTug.IdTug); // Pass fake ID instead of fake name
@@ -118,12 +108,9 @@ namespace DatabaseScript.Controllers
                 _logger.LogWarning($"No match found for primary with ID {primaryId} and name {primaryName}");
             }
         }
-
-
         private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, int fakeId)
         {
             var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.IdTug == fakeId);
-
             if (fakeTug != null)
             {
                 using (var transaction = dbContext.Database.BeginTransaction())
