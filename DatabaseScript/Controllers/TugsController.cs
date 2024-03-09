@@ -71,44 +71,58 @@ namespace DatabaseScript.Controllers
                     // Read Excel rows and process data
                     for (int row = worksheet.Dimension.Start.Row + 1; row <= worksheet.Dimension.End.Row; row++)
                     {
+                        // Assuming ID is in the first column
+                        if (!int.TryParse(worksheet.Cells[row, 1].Value?.ToString().Trim(), out int primaryId))
+                        {
+                            _logger.LogWarning($"Invalid or missing ID at row {row}");
+                            continue; // Skip this row if the ID is invalid
+                        }
+
                         string primaryName = worksheet.Cells[row, 2].Value?.ToString().Trim();
                         string fakesString = worksheet.Cells[row, 3].Value?.ToString().Trim();
                         List<string> fakes = new List<string>(fakesString?.Split(',').Select(s => s.Trim()));
 
-                        ProcessPrimaryTug(dbContext, primaryName, fakes);
+                        ProcessPrimaryTug(dbContext, primaryId, primaryName, fakes);
                     }
 
                     dbContext.SaveChanges();
                 }
             }
+
         }
 
-        private void ProcessPrimaryTug(ScriptDbContext dbContext, string primaryName, List<string> fakes)
+        private void ProcessPrimaryTug(ScriptDbContext dbContext, int primaryId, string primaryName, List<string> fakes)
         {
-            var primaryTug = dbContext.AuxTugs.Where(t => t.NameTug == primaryName).OrderBy(t => t.IdTug).FirstOrDefault();
+            var primaryTug = dbContext.AuxTugs.FirstOrDefault(t => t.IdTug == primaryId && t.NameTug == primaryName);
 
             if (primaryTug != null)
             {
-                int primaryId = primaryTug.IdTug;
-                string primaryNameDb = primaryTug.NameTug;
-
-                _logger.LogInformation($"Primary {primaryNameDb} found with id_tug: {primaryTug.IdTug}");
+                _logger.LogInformation($"Primary {primaryName} with ID {primaryId} found");
 
                 foreach (var fakeName in fakes)
                 {
-                    UpdateAndDeleteFakeTugs(dbContext, primaryId, fakeName); // Pass dbContext to the method
+                    var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == fakeName && t.IdTug != primaryId);
+
+                    if (fakeTug != null)
+                    {
+                        UpdateAndDeleteFakeTugs(dbContext, primaryId, fakeTug.IdTug); // Pass fake ID instead of fake name
+                    }
+                    else
+                    {
+                        _logger.LogWarning($"No match found for fake {fakeName}");
+                    }
                 }
             }
             else
             {
-                _logger.LogWarning($"No match found for primary {primaryName}");
+                _logger.LogWarning($"No match found for primary with ID {primaryId} and name {primaryName}");
             }
         }
 
 
-        private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, string fakeName)
+        private void UpdateAndDeleteFakeTugs(ScriptDbContext dbContext, int primaryId, int fakeId)
         {
-            var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.NameTug == fakeName);
+            var fakeTug = dbContext.AuxTugs.FirstOrDefault(t => t.IdTug == fakeId);
 
             if (fakeTug != null)
             {
@@ -116,34 +130,40 @@ namespace DatabaseScript.Controllers
                 {
                     try
                     {
-                        var movementTugsToUpdate = dbContext.AuxMovementTugs.Where(mt => mt.IdTug == fakeTug.IdTug).ToList();
-
+                        // Update movement tugs
+                        var movementTugsToUpdate = dbContext.AuxMovementTugs.Where(mt => mt.IdTug == fakeId).ToList();
                         foreach (var mt in movementTugsToUpdate)
                         {
                             mt.IdTug = (uint)primaryId;
-                            dbContext.SaveChanges();
                         }
 
-                        // Ensure there are no remaining references to fakeTug
-                        dbContext.AuxTugs.Remove(fakeTug);
-                        dbContext.SaveChanges(); // Save changes after removing fakeTug
+                        // Save changes for movement tugs
+                        dbContext.SaveChanges();
 
-                        transaction.Commit(); // Commit transaction
-                        _logger.LogInformation($"Updated and deleted fake {fakeName} and {fakeTug.IdTug}");
+                        // Remove fake tug
+                        dbContext.AuxTugs.Remove(fakeTug);
+
+                        // Save changes for removing fake tug
+                        dbContext.SaveChanges();
+
+                        transaction.Commit();
+                        _logger.LogInformation($"Updated and deleted fake {fakeTug.NameTug} with ID {fakeId}");
                     }
                     catch (Exception ex)
                     {
-                        transaction.Rollback(); // Rollback transaction on error
-                        _logger.LogError(ex, "Error occurred while updating and deleting fake tugs");
-                        throw; // Rethrow the exception to notify caller
+                        transaction.Rollback();
+                        _logger.LogError(ex, $"Error occurred while updating and deleting fake tug with ID {fakeId}");
+                        throw;
                     }
                 }
             }
             else
             {
-                _logger.LogWarning($"No match found for fake {fakeName}");
+                _logger.LogWarning($"No match found for fake with ID {fakeId}");
             }
         }
+
+
 
 
 
