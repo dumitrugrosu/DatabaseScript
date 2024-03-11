@@ -3,8 +3,12 @@ using OfficeOpenXml;
 using Microsoft.EntityFrameworkCore;
 using DatabaseScript.Models;
 
+
 namespace DatabaseScript.Controllers
 {
+    /// <summary>
+    /// Controller responsible for managing tugs.
+    ///</summary>
     [ApiController]
     [Route("[controller]")]
     public class BargesController : ControllerBase

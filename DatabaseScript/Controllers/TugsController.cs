@@ -149,13 +149,5 @@ namespace DatabaseScript.Controllers
                 _logger.LogWarning($"No match found for fake with ID {fakeId}");
             }
         }
-
-
-
-
-
-
-
-
     }
 }
