@@ -26,7 +26,7 @@ public partial class AuxVesselsContext : DbContext
 
     public virtual DbSet<AuxTug> AuxTugs { get; set; }
 
-    public virtual DbSet<MngAuxBarge> MngAuxBarges { get; set; }
+    public virtual DbSet<MngAuxBarges> MngAuxBarges { get; set; }
 
     public virtual DbSet<MngAuxPilot> MngAuxPilots { get; set; }
 
@@ -154,7 +154,7 @@ public partial class AuxVesselsContext : DbContext
                 .HasConstraintName("FK_dbo.AUX_TUGS_dbo.MNG_AUX_TUGS_TUG_SID");
         });
 
-        modelBuilder.Entity<MngAuxBarge>(entity =>
+        modelBuilder.Entity<MngAuxBarges>(entity =>
         {
             entity.HasKey(e => e.Sid).HasName("PK_dbo.MNG_AUX_BARGES");
 

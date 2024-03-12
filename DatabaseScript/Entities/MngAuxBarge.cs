@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace DatabaseScript.Entities;
 
-public partial class MngAuxBarge
+public partial class MngAuxBarges
 {
     public long Sid { get; set; }
 

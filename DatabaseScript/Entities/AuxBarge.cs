@@ -13,5 +13,5 @@ public partial class AuxBarge
 
     public virtual AuxManeuver AuxS { get; set; } = null!;
 
-    public virtual MngAuxBarge BargeS { get; set; } = null!;
+    public virtual MngAuxBarges BargeS { get; set; } = null!;
 }
