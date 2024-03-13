@@ -4,7 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace DatabaseScript.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     public class MigrationController : ControllerBase
     {
         private readonly IDataMigrationService _dataMigrationService;

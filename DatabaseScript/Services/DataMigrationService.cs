@@ -1,6 +1,7 @@
 ﻿using DatabaseScript.Context;
 using DatabaseScript.Models;
-using DatabaseScript.Entities; // Import entities from both contexts
+using DatabaseScript.Entities;
+using Microsoft.EntityFrameworkCore; // Import entities from both contexts
 
 namespace DatabaseScript.Services
 {
@@ -8,15 +9,29 @@ namespace DatabaseScript.Services
     {
         private readonly ScriptDbContext _sourceContext;
         private readonly AuxVesselsContext _destinationContext;
-
+        
         public DataMigrationService(ScriptDbContext sourceContext, AuxVesselsContext destinationContext)
         {
             _sourceContext = sourceContext;
             _destinationContext = destinationContext;
+
         }
 
         public void MigrateData()
         {
+            _destinationContext.Database.OpenConnection();
+            // Enable identity insert for the destination context
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
+
+
+
+
+
             // Retrieve data from the old database
             var oldBarges = _sourceContext.AuxBarges.ToList();
             var oldMovements = _sourceContext.AuxMovements.ToList();
@@ -40,72 +55,74 @@ namespace DatabaseScript.Services
                 _destinationContext.MngAuxBarges.Add(newBarge);
             }
 
-            foreach (var olPilot in oldPilot)
-            {
-                var newPilot = new MngAuxPilot()
-                {
-                    Sid = olPilot.IdPilot,
-                    PilotName = olPilot.Pilot,
-                };
-                _destinationContext.MngAuxPilots.Add(newPilot);
-            }
+            _destinationContext.SaveChanges();
 
-            foreach (var oldTug in oldTugs)
-            {
-                var newTug = new MngAuxTug()
-                {
-                    Sid = oldTug.IdTug,
-                    TugName = oldTug.NameTug,
-                };
-                _destinationContext.MngAuxTugs.Add(newTug);
-            }
+            /* foreach (var olPilot in oldPilot)
+             {
+                 var newPilot = new MngAuxPilot()
+                 {
+                     Sid = olPilot.IdPilot,
+                     PilotName = olPilot.Pilot,
+                 };
+                 _destinationContext.MngAuxPilots.Add(newPilot);
+             }
 
-            foreach (var oldMovement in oldMovements)
-            {
-                var newMovement = new AuxManeuver()
-                {
-                    Sid = oldMovement.IdMovement,
-                };
-                _destinationContext.AuxManeuvers.Add(newMovement);
-            }
-            
-            foreach (var oldMovementTug in oldMovementTugs)
-            {
-                var newMovementTug = new AuxManeuver()
-                {
-                    Sid = (long)oldMovementTug.IdMovementTugs,
-                };
-                _destinationContext.AuxManeuvers.Add(newMovementTug);
-            }
+             foreach (var oldTug in oldTugs)
+             {
+                 var newTug = new MngAuxTug()
+                 {
+                     Sid = oldTug.IdTug,
+                     TugName = oldTug.NameTug,
+                 };
+                 _destinationContext.MngAuxTugs.Add(newTug);
+             }
 
-            foreach (var oldEstimatedTimes in oldEstimatedTime)
-            {
-                var newEstimatedTime = new Entities.AuxEstimatedTime()
-                {
-                    Sid = oldEstimatedTimes.IdAux,
-                    FromBerth = oldEstimatedTimes.A.ToString(),
-                    ToBerth = oldEstimatedTimes.B.ToString(),
-                    SumTimeSec = (int)oldEstimatedTimes.SumTime,
-                    SumMan = oldEstimatedTimes.SumMan,
-                    LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
-                };
-                _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
-            }
+             foreach (var oldMovement in oldMovements)
+             {
+                 var newMovement = new AuxManeuver()
+                 {
+                     Sid = oldMovement.IdMovement,
+                 };
+                 _destinationContext.AuxManeuvers.Add(newMovement);
+             }
 
-            foreach (var oldTypes in oldType)
-            {
-                var newType = new MngAuxTugType()
-                {
-                    Sid = oldTypes.IdType,
-                    Type = oldTypes.Type,
-                    CountFree = oldTypes.CountEvenFreeRunning,
-                    Bunker = oldTypes.BunkerField,
-                    Barge = oldTypes.BargeField,
-                    Ssn = oldTypes.SsnRequested
+             foreach (var oldMovementTug in oldMovementTugs)
+             {
+                 var newMovementTug = new AuxManeuver()
+                 {
+                     Sid = (long)oldMovementTug.IdMovementTugs,
+                 };
+                 _destinationContext.AuxManeuvers.Add(newMovementTug);
+             }
 
-                };
-                _destinationContext.MngAuxTugTypes.Add(newType);
-            }
+             foreach (var oldEstimatedTimes in oldEstimatedTime)
+             {
+                 var newEstimatedTime = new Entities.AuxEstimatedTime()
+                 {
+                     Sid = oldEstimatedTimes.IdAux,
+                     FromBerth = oldEstimatedTimes.A.ToString(),
+                     ToBerth = oldEstimatedTimes.B.ToString(),
+                     SumTimeSec = (int)oldEstimatedTimes.SumTime,
+                     SumMan = oldEstimatedTimes.SumMan,
+                     LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
+                 };
+                 _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
+             }
+
+             foreach (var oldTypes in oldType)
+             {
+                 var newType = new MngAuxTugType()
+                 {
+                     Sid = oldTypes.IdType,
+                     Type = oldTypes.Type,
+                     CountFree = oldTypes.CountEvenFreeRunning,
+                     Bunker = oldTypes.BunkerField,
+                     Barge = oldTypes.BargeField,
+                     Ssn = oldTypes.SsnRequested
+
+                 };
+                 _destinationContext.MngAuxTugTypes.Add(newType);
+             }*/
 
             _destinationContext.SaveChanges();
         }

@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace DatabaseScript.Entities;
+﻿namespace DatabaseScript.Entities;
 
 public partial class AuxEstimatedTime
 {
@@ -17,8 +14,5 @@ public partial class AuxEstimatedTime
 
     public DateTime LastRegisterTime { get; set; }
 
-    public static implicit operator AuxEstimatedTime(AuxEstimatedTime v)
-    {
-        throw new NotImplementedException();
-    }
+    
 }

@@ -1,4 +1,6 @@
+using DatabaseScript.Context;
 using DatabaseScript.Models;
+using DatabaseScript.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -6,6 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddScoped<IDataMigrationService, DataMigrationService>();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo { Title = "DatabaseScript", Version = "v1" });
@@ -16,6 +19,8 @@ builder.Services.Configure<IISServerOptions>(options =>
 {
     options.AllowSynchronousIO = true;
 });
+
+// Configure DbContext for the old database (MySQL)
 builder.Services.AddDbContext<ScriptDbContext>(options =>
     options.UseMySql(builder.Configuration.GetConnectionString("DefaultConnection"),
         new MySqlServerVersion(new Version(8, 0, 21)), // Example: Adjust the version as needed
@@ -24,7 +29,9 @@ builder.Services.AddDbContext<ScriptDbContext>(options =>
             maxRetryDelay: TimeSpan.FromSeconds(30),
             errorNumbersToAdd: null)));
 
-
+// Configure DbContext for the new database (SQL Server)
+builder.Services.AddDbContext<AuxVesselsContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection2")));
 
 
 var app = builder.Build();
@@ -42,7 +49,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseAuthorization();
+using (var scope = app.Services.CreateScope())
+{
+    var serviceProvider = scope.ServiceProvider;
+    var dbContext = serviceProvider.GetRequiredService<AuxVesselsContext>();
 
+    // Execute the SQL query to enable identity insert
+    dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] ON");
+}
 app.MapControllers();
 
 app.Run();
