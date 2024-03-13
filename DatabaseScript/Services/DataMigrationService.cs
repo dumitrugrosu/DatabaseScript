@@ -22,11 +22,12 @@ namespace DatabaseScript.Services
             _destinationContext.Database.OpenConnection();
             // Enable identity insert for the destination context
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] ON");
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] ON");
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] ON");
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] ON");
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
+            
+            
+            /* _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] ON");
+             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] ON");
+             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
+             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");*/
 
 
 
@@ -54,49 +55,54 @@ namespace DatabaseScript.Services
 
                 _destinationContext.MngAuxBarges.Add(newBarge);
             }
-
             _destinationContext.SaveChanges();
-
-            /* foreach (var olPilot in oldPilot)
-             {
+            _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] ON");
+            foreach (var olPilot in oldPilot)
+            {
                  var newPilot = new MngAuxPilot()
                  {
                      Sid = olPilot.IdPilot,
                      PilotName = olPilot.Pilot,
                  };
                  _destinationContext.MngAuxPilots.Add(newPilot);
-             }
+            }
+            _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
 
-             foreach (var oldTug in oldTugs)
-             {
+            /*foreach (var oldTug in oldTugs)
+            {
                  var newTug = new MngAuxTug()
                  {
                      Sid = oldTug.IdTug,
                      TugName = oldTug.NameTug,
                  };
                  _destinationContext.MngAuxTugs.Add(newTug);
-             }
-
-             foreach (var oldMovement in oldMovements)
-             {
+            }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] OFF");
+            _destinationContext.SaveChanges();
+            foreach (var oldMovement in oldMovements)
+            {
                  var newMovement = new AuxManeuver()
                  {
                      Sid = oldMovement.IdMovement,
                  };
                  _destinationContext.AuxManeuvers.Add(newMovement);
-             }
+            }
 
-             foreach (var oldMovementTug in oldMovementTugs)
-             {
+            foreach (var oldMovementTug in oldMovementTugs)
+            {
                  var newMovementTug = new AuxManeuver()
                  {
                      Sid = (long)oldMovementTug.IdMovementTugs,
                  };
                  _destinationContext.AuxManeuvers.Add(newMovementTug);
-             }
-
-             foreach (var oldEstimatedTimes in oldEstimatedTime)
-             {
+            }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
+            _destinationContext.SaveChanges();
+            foreach (var oldEstimatedTimes in oldEstimatedTime)
+            {
                  var newEstimatedTime = new Entities.AuxEstimatedTime()
                  {
                      Sid = oldEstimatedTimes.IdAux,
@@ -107,10 +113,11 @@ namespace DatabaseScript.Services
                      LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
                  };
                  _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
-             }
-
-             foreach (var oldTypes in oldType)
-             {
+            }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] OFF");
+            _destinationContext.SaveChanges();
+            foreach (var oldTypes in oldType)
+            {
                  var newType = new MngAuxTugType()
                  {
                      Sid = oldTypes.IdType,
@@ -122,9 +129,9 @@ namespace DatabaseScript.Services
 
                  };
                  _destinationContext.MngAuxTugTypes.Add(newType);
-             }*/
-
-            _destinationContext.SaveChanges();
+            }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] OFF");
+            _destinationContext.SaveChanges();*/
         }
     }
 }
