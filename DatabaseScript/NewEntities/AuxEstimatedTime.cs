@@ -16,4 +16,9 @@ public partial class AuxEstimatedTime
     public int SumMan { get; set; }
 
     public DateTime LastRegisterTime { get; set; }
+
+    public static implicit operator AuxEstimatedTime(AuxEstimatedTime v)
+    {
+        throw new NotImplementedException();
+    }
 }
