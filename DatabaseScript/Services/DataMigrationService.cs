@@ -55,6 +55,7 @@ namespace DatabaseScript.Services
 
                 _destinationContext.MngAuxBarges.Add(newBarge);
             }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] OFF");
             _destinationContext.SaveChanges();
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
@@ -68,70 +69,96 @@ namespace DatabaseScript.Services
                  };
                  _destinationContext.MngAuxPilots.Add(newPilot);
             }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] OFF");
             _destinationContext.SaveChanges();
             _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] ON");
 
-            /*foreach (var oldTug in oldTugs)
+            foreach (var oldTug in oldTugs)
             {
-                 var newTug = new MngAuxTug()
-                 {
-                     Sid = oldTug.IdTug,
-                     TugName = oldTug.NameTug,
-                 };
-                 _destinationContext.MngAuxTugs.Add(newTug);
+                var newTug = new MngAuxTug()
+                {
+                    Sid = oldTug.IdTug,
+                    TugName = oldTug.NameTug,
+                };
+                _destinationContext.MngAuxTugs.Add(newTug);
             }
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
             foreach (var oldMovement in oldMovements)
             {
-                 var newMovement = new AuxManeuver()
-                 {
-                     Sid = oldMovement.IdMovement,
-                 };
-                 _destinationContext.AuxManeuvers.Add(newMovement);
-            }
+                var newMovement = new AuxManeuver()
+                {
+                    Sid = oldMovement.IdMovement,
+                    BunkerFieldName = oldMovement.BunkerField,
+                    UserSid = oldMovement.IdUserStart,
+                    UserEndSid = oldMovement.IdUserStop,
+                    FromTime = DateTimeOffset.FromUnixTimeMilliseconds(oldMovement.StartTime).DateTime,
+                    ToTime = DateTimeOffset.FromUnixTimeMilliseconds(oldMovement.StopTime).DateTime,
+                    PausedSec = oldMovement.Paused,
 
-            foreach (var oldMovementTug in oldMovementTugs)
-            {
-                 var newMovementTug = new AuxManeuver()
-                 {
-                     Sid = (long)oldMovementTug.IdMovementTugs,
-                 };
-                 _destinationContext.AuxManeuvers.Add(newMovementTug);
+
+                };
+                _destinationContext.AuxManeuvers.Add(newMovement);
             }
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
+
+            foreach (var oldMovementTug in oldMovementTugs)
+            {
+                var newMovementTug = new AuxManeuver()
+                {
+                    Sid = (long)oldMovementTug.IdMovementTugs,
+                };
+                _destinationContext.AuxManeuvers.Add(newMovementTug);
+            }
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
+            _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
             foreach (var oldEstimatedTimes in oldEstimatedTime)
             {
-                 var newEstimatedTime = new Entities.AuxEstimatedTime()
-                 {
-                     Sid = oldEstimatedTimes.IdAux,
-                     FromBerth = oldEstimatedTimes.A.ToString(),
-                     ToBerth = oldEstimatedTimes.B.ToString(),
-                     SumTimeSec = (int)oldEstimatedTimes.SumTime,
-                     SumMan = oldEstimatedTimes.SumMan,
-                     LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
-                 };
-                 _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
+                var newEstimatedTime = new Entities.AuxEstimatedTime()
+                {
+                    Sid = oldEstimatedTimes.IdAux,
+                    FromBerth = oldEstimatedTimes.A.ToString(),
+                    ToBerth = oldEstimatedTimes.B.ToString(),
+                    SumTimeSec = (int)oldEstimatedTimes.SumTime,
+                    SumMan = oldEstimatedTimes.SumMan,
+                    LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
+                };
+                _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
             }
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
+            _destinationContext.Database.OpenConnection();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] ON");
             foreach (var oldTypes in oldType)
             {
-                 var newType = new MngAuxTugType()
-                 {
-                     Sid = oldTypes.IdType,
-                     Type = oldTypes.Type,
-                     CountFree = oldTypes.CountEvenFreeRunning,
-                     Bunker = oldTypes.BunkerField,
-                     Barge = oldTypes.BargeField,
-                     Ssn = oldTypes.SsnRequested
+                var newType = new MngAuxTugType()
+                {
+                    Sid = oldTypes.IdType,
+                    Type = oldTypes.Type,
+                    CountFree = oldTypes.CountEvenFreeRunning,
+                    Bunker = oldTypes.BunkerField,
+                    Barge = oldTypes.BargeField,
+                    Ssn = oldTypes.SsnRequested
 
-                 };
-                 _destinationContext.MngAuxTugTypes.Add(newType);
+                };
+                _destinationContext.MngAuxTugTypes.Add(newType);
             }
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] OFF");
-            _destinationContext.SaveChanges();*/
+            _destinationContext.SaveChanges();
+            _destinationContext.Database.CloseConnection();
         }
     }
 }
