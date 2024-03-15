@@ -29,10 +29,6 @@ namespace DatabaseScript.Services
              _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
              _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");*/
 
-
-
-
-
             // Retrieve data from the old database
             var oldBarges = _sourceContext.AuxBarges.ToList();
             var oldMovements = _sourceContext.AuxMovements.ToList();
@@ -47,85 +43,94 @@ namespace DatabaseScript.Services
             // Transform and migrate data to the new database
             foreach (var oldBarge in oldBarges)
             {
-                var newBarge = new MngAuxBarges()
+                var newMngAuxBarges = new MngAuxBarges()
                 {
                     Sid = oldBarge.IdBarge,
                     BargeName = oldBarge.Barge,
                 };
 
-                _destinationContext.MngAuxBarges.Add(newBarge);
+                _destinationContext.MngAuxBarges.Add(newMngAuxBarges);
             }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] OFF");
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] ON");
             foreach (var olPilot in oldPilot)
             {
-                 var newPilot = new MngAuxPilot()
+                 var newMngAuxPilot = new MngAuxPilot()
                  {
                      Sid = olPilot.IdPilot,
                      PilotName = olPilot.Pilot,
                  };
-                 _destinationContext.MngAuxPilots.Add(newPilot);
+                 _destinationContext.MngAuxPilots.Add(newMngAuxPilot);
             }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_PILOTS] OFF");
+
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] ON");
 
             foreach (var oldTug in oldTugs)
             {
-                var newTug = new MngAuxTug()
+                var newMngAuxTug = new MngAuxTug()
                 {
                     Sid = oldTug.IdTug,
                     TugName = oldTug.NameTug,
                 };
-                _destinationContext.MngAuxTugs.Add(newTug);
+                _destinationContext.MngAuxTugs.Add(newMngAuxTug);
             }
+            _destinationContext.SaveChanges();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUGS] OFF");
-            _destinationContext.SaveChanges();
+
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
-            foreach (var oldMovement in oldMovements)
+
+            oldMovements.ForEach(movement =>
             {
-                var newMovement = new AuxManeuver()
+                var newManeuver = new AuxManeuver()
                 {
-                    Sid = oldMovement.IdMovement,
-                    BunkerFieldName = oldMovement.BunkerField,
-                    UserSid = oldMovement.IdUserStart,
-                    UserEndSid = oldMovement.IdUserStop,
-                    FromTime = DateTimeOffset.FromUnixTimeMilliseconds(oldMovement.StartTime).DateTime,
-                    ToTime = DateTimeOffset.FromUnixTimeMilliseconds(oldMovement.StopTime).DateTime,
-                    PausedSec = oldMovement.Paused,
-
-
+                    Sid = movement.IdMovement,
+                    BunkerFieldName = movement.BunkerField,
+                    UserSid = movement.IdUserStart,
+                    UserEndSid = movement.IdUserStop,
+                    FromTime = DateTimeOffset.FromUnixTimeSeconds(movement.StartTime).DateTime,
+                    ToTime = DateTimeOffset.FromUnixTimeSeconds(movement.StopTime).DateTime,
+                    PausedSec = movement.Paused,
+                    RegisterTime = DateTime.Now
                 };
-                _destinationContext.AuxManeuvers.Add(newMovement);
-            }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
+                _destinationContext.AuxManeuvers.AddRange(newManeuver);
+
+            });
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
+
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] ON");
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_TUGS] ON");
 
             foreach (var oldMovementTug in oldMovementTugs)
             {
-                var newMovementTug = new AuxManeuver()
+                var newTugs = new AuxTug()
                 {
                     Sid = (long)oldMovementTug.IdMovementTugs,
+                    AuxSid = oldMovementTug.IdMovement,
+                    TugSid = oldMovementTug.IdTug,
                 };
-                _destinationContext.AuxManeuvers.Add(newMovementTug);
+                _destinationContext.AuxTugs.Add(newTugs);
             }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_MANEUVERS] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_TUGS] OFF");
+
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] ON");
             foreach (var oldEstimatedTimes in oldEstimatedTime)
             {
+
+
                 var newEstimatedTime = new Entities.AuxEstimatedTime()
                 {
                     Sid = oldEstimatedTimes.IdAux,
@@ -133,12 +138,13 @@ namespace DatabaseScript.Services
                     ToBerth = oldEstimatedTimes.B.ToString(),
                     SumTimeSec = (int)oldEstimatedTimes.SumTime,
                     SumMan = oldEstimatedTimes.SumMan,
-                    LastRegisterTime = DateTimeOffset.FromUnixTimeMilliseconds(oldEstimatedTimes.LastStamp).DateTime,
+                    LastRegisterTime = DateTimeOffset.FromUnixTimeSeconds(oldEstimatedTimes.LastStamp).DateTime,
                 };
                 _destinationContext.AuxEstimatedTimes.Add(newEstimatedTime);
             }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[AUX_ESTIMATED_TIMES] OFF");
+
             _destinationContext.Database.CloseConnection();
             _destinationContext.Database.OpenConnection();
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] ON");
@@ -156,8 +162,9 @@ namespace DatabaseScript.Services
                 };
                 _destinationContext.MngAuxTugTypes.Add(newType);
             }
-            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] OFF");
             _destinationContext.SaveChanges();
+            _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPES] OFF");
+
             _destinationContext.Database.CloseConnection();
         }
     }
