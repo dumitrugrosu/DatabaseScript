@@ -179,6 +179,17 @@ namespace DatabaseScript.Services
             _destinationContext.Database.OpenConnection();
             foreach (var oldMovement in oldMovements)
             {
+                if (!_destinationContext.MngAuxPilots.Any(pilot => pilot.Sid == oldMovement.PilotField))
+                {
+                    Console.WriteLine($"Skipping entry: PILOT_SID {oldMovement.PilotField} does not exist in MNG_AUX_PILOTS");
+                    continue;
+                }
+
+                if (!_destinationContext.AuxManeuvers.Any(maneuver => maneuver.Sid == oldMovement.IdMovement))
+                {
+                    Console.WriteLine($"Skipping entry: MOVEMENT_SID {oldMovement.IdMovement} does not exist in AUX_MANEUVERS");
+                    continue;
+                }
                 var newPilots = new Entities.AuxPilot()
                 {
                     AuxSid = oldMovement.IdMovement,
@@ -191,6 +202,17 @@ namespace DatabaseScript.Services
             _destinationContext.Database.OpenConnection();
             foreach (var oldMovement in oldMovements)
             {
+                if (!_destinationContext.MngAuxBarges.Any(barge => barge.Sid == oldMovement.BargeField))
+                {
+                    Console.WriteLine($"Skipping entry: BARGE_SID {oldMovement.BargeField} does not exist in MNG_AUX_BARGES");
+                    continue;
+                }
+
+                if (!_destinationContext.AuxManeuvers.Any(maneuver => maneuver.Sid == oldMovement.IdMovement))
+                {
+                    Console.WriteLine($"Skipping entry: MOVEMENT_SID {oldMovement.IdMovement} does not exist in AUX_MANEUVERS");
+                    continue;
+                }
                 var newBarges = new Entities.AuxBarge()
                 {
                     AuxSid = oldMovement.IdMovement,
