@@ -242,6 +242,8 @@ namespace DatabaseScript.Services
             _destinationContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_TUG_TYPE] OFF");
 
             _destinationContext.Database.CloseConnection();
+            Console.WriteLine("Data migration completed successfully.");
         }
+
     }
 }

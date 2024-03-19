@@ -53,9 +53,6 @@ using (var scope = app.Services.CreateScope())
 {
     var serviceProvider = scope.ServiceProvider;
     var dbContext = serviceProvider.GetRequiredService<AuxVesselsContext>();
-
-    // Execute the SQL query to enable identity insert
-    dbContext.Database.ExecuteSqlRaw("SET IDENTITY_INSERT [dbo].[MNG_AUX_BARGES] ON");
 }
 app.MapControllers();
 
