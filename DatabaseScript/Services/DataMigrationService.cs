@@ -90,6 +90,8 @@ namespace DatabaseScript.Services
 
             oldMovements.ForEach(movement =>
             {
+                var fromBerth = _sourceContext.AuxBerths.FirstOrDefault(b => b.IdBerth == movement.IdFrom)?.Berth;
+                var toBerth = _sourceContext.AuxBerths.FirstOrDefault(b => b.IdBerth == movement.IdTo)?.Berth;
                 var newManeuver = new AuxManeuver()
                 {
                     Sid = movement.IdMovement,
@@ -99,7 +101,9 @@ namespace DatabaseScript.Services
                     FromTime = DateTimeOffset.FromUnixTimeSeconds(movement.StartTime).DateTime,
                     ToTime = DateTimeOffset.FromUnixTimeSeconds(movement.StopTime).DateTime,
                     PausedSec = movement.Paused,
-                    RegisterTime = DateTime.Now
+                    RegisterTime = DateTime.Now,
+                    FromPosition = fromBerth,
+                    ToPosition = toBerth
                 };
                 _destinationContext.AuxManeuvers.AddRange(newManeuver);
 
