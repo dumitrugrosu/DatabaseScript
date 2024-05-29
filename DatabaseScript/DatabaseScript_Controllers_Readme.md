@@ -29,7 +29,7 @@ This repository contains three ASP.NET Core controllers (`TugsController`, `Pilo
 ## How to Use
 1. Clone this repository to your local machine.
 2. Ensure you have the necessary tools installed to run an ASP.NET Core application.
-3. Configure the database connection string in `appsettings.json`.
+3. Configure the database connection string in `appsettings.json` and `AuxVesselsContext.cs` line 34.
 4. Build and run the application.
 5. **Ensure that you are connected to the appropriate database before making requests to the API endpoints**.
 6. Send POST requests to the respective endpoints with an uploaded Excel file in the specified format to process and update the database.
